@@ -2,18 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vanity SS58 Finder (Browser)</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { margin-bottom: 0.25rem; }
-    p.subtitle { color: #555; margin-top: 0; margin-bottom: 1.5rem; }
-    label { display: block; margin-top: 0.75rem; font-weight: 600; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 780px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 3.25rem; /* extra bottom space so fixed footer never covers content */
+    }
+    h1 { margin-bottom: 0.2rem; }
+    p.subtitle { color: #555; margin-top: 0; margin-bottom: 1.1rem; }
+    label { display: block; margin-top: 0.5rem; font-weight: 600; }
     input, select { width: 100%; padding: 0.4rem; margin-top: 0.25rem; box-sizing: border-box; }
     input[type="checkbox"] { width: auto; padding: 0; margin: 0; }
-    button { margin-top: 1rem; padding: 0.5rem 1.25rem; font-weight: 600; cursor: pointer; }
-    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    button { margin-top: 1rem; padding: 0.6rem 1.4rem; font-weight: 600; cursor: pointer; }
+    .row { display: flex; gap: 0.75rem 1rem; flex-wrap: wrap; }
     .row > div { flex: 1 1 200px; }
-    .result, .error, .status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; }
+    .result, .error, .status { margin-top: 1.25rem; padding: 1rem; border-radius: 6px; }
     .result { background: #e6ffed; border: 1px solid #34c759; }
     .error { background: #ffecec; border: 1px solid #ff3b30; }
     .status { background: #f4f4f4; border: 1px solid #ddd; font-size: 0.9rem; color: #333; }
@@ -22,13 +28,45 @@
       display: flex;
       align-items: center;
       gap: 0.35rem;
-      margin-top: 0.75rem;
+      margin-top: 0.5rem;
       font-weight: 600;
     }
 
+    .footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      font-size: 0.85rem;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding: 0.5rem 1rem;
+      background: #fff;
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.03);
+      text-align: right;
+    }
+
     @media (max-width: 640px) {
+      body {
+        margin: 1rem auto;
+        padding: 0 0.75rem 1.5rem;
+      }
+
+      /* Stack fields without extra flex spacing on small screens */
       .row {
-        flex-direction: column;
+        display: block;
+      }
+
+      .row > div {
+        margin-top: 0;
+      }
+
+      label {
+        margin-top: 0.4rem;
+      }
+
+      button {
+        margin-top: 0.75rem;
       }
     }
   </style>
@@ -70,7 +108,7 @@
   <div id="result" class="result" style="display:none;"></div>
   <div id="error" class="error" style="display:none;"></div>
 
-  <footer style="margin-top: 2rem; font-size: 0.85rem; color: #666; border-top: 1px solid #ddd; padding-top: 0.75rem;">
+  <footer class="footer">
     <strong>Author:</strong> Kostiantyn Panchenko
   </footer>
 
@@ -204,6 +242,12 @@
             <p><strong>Total tries:</strong> ${hitInfo.tries}</p>
             <p><strong>Elapsed:</strong> ${hitInfo.elapsedSec}s</p>
             <p><strong>Rate:</strong> ${hitInfo.rate} tries/sec</p>
+            <p style="margin-top: 0.75rem; font-size: 0.9rem;">
+              For Bittensor usage, see
+              <a href="HOWTO_USE_GENERATED_SEED_BITTENSOR.md" target="_blank" rel="noopener noreferrer">
+                How to use the generated seed
+              </a>.
+            </p>
           `;
         } else {
           statusEl.style.display = 'none';
