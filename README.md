@@ -48,6 +48,7 @@ If your browser blocks local module scripts, you can instead serve the folder wi
 
 - **Targets**
   - Comma-separated list of substrings you want to match.
+  - Multiple targets are treated as alternatives: the search stops on the first address that matches *any* of the values.
   - Example: `GLS, TEST, 123`.
 
 - **Match case**
@@ -68,6 +69,8 @@ When a match is found, the result panel shows:
 - Public key (hex).
 - Seed (hex, 32 bytes).
 - Total tries, elapsed time, and approximate tries/sec.
+
+> **Note:** Matching an SS58 address with a substring longer than about 3 characters can take a very large number of attempts. Increase **Max tries** accordingly and expect searches to run for longer.
 
 You can store the **seed hex** and use it with Polkadot JS tooling or your own code to recreate the same sr25519 keypair.
 

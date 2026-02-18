@@ -92,6 +92,9 @@
 
     <label for="targets">Targets (comma-separated, e.g. LOL, TAO, xyz)</label>
     <input id="targets" name="targets" placeholder="LOL, XYZ, TAO" value="LOL" />
+    <p style="margin-top: 0.25rem; font-size: 0.9rem; color: #555;">
+      Multiple targets are treated as alternatives: the search stops on the first address that matches <em>any</em> of the comma-separated values.
+    </p>
 
     <label class="inline-label">
       <input type="checkbox" id="match-case" name="matchCase" />
@@ -100,6 +103,9 @@
 
     <label for="max-tries">Max tries</label>
     <input id="max-tries" name="maxTries" type="number" value="1000000" min="1" />
+    <p style="margin-top: 0.25rem; font-size: 0.9rem; color: #555;">
+      Matching substrings longer than about 3 characters can require many attempts. Increase this value if you are searching for longer patterns and expect the search to run longer.
+    </p>
 
     <button type="submit">Start search</button>
   </form>
@@ -244,7 +250,7 @@
             <p><strong>Rate:</strong> ${hitInfo.rate} tries/sec</p>
             <p style="margin-top: 0.75rem; font-size: 0.9rem;">
               For Bittensor usage, see
-              <a href="HOWTO_USE_GENERATED_SEED_BITTENSOR.md" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/k-panchenko/vanity-ss58-finder/blob/main/HOWTO_USE_GENERATED_SEED_BITTENSOR.md" target="_blank" rel="noopener noreferrer">
                 How to use the generated seed
               </a>.
             </p>
