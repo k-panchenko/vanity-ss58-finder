@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vanity SS58 Finder (Browser)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { margin-bottom: 0.25rem; }
+    p.subtitle { color: #555; margin-top: 0; margin-bottom: 1.5rem; }
+    label { display: block; margin-top: 0.75rem; font-weight: 600; }
+    input, select { width: 100%; padding: 0.4rem; margin-top: 0.25rem; box-sizing: border-box; }
+    button { margin-top: 1rem; padding: 0.5rem 1.25rem; font-weight: 600; cursor: pointer; }
+    .row { display: flex; gap: 1rem; }
+    .row > div { flex: 1; }
+    .result, .error, .status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; }
+    .result { background: #e6ffed; border: 1px solid #34c759; }
+    .error { background: #ffecec; border: 1px solid #ff3b30; }
+    .status { background: #f4f4f4; border: 1px solid #ddd; font-size: 0.9rem; color: #333; }
+    code { background: #f4f4f4; padding: 0.15rem 0.3rem; border-radius: 3px; word-break: break-all; }
+    .inline-label {
+      display: inline-flex;
+      flex-direction: row-reverse; /* text then checkbox */
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vanity SS58 Finder</h1>
+  <p class="subtitle">Runs fully in your browser using sr25519 and SS58 (no backend).</p>
+
+  <form id="vanity-form">
+    <div class="row">
+      <div>
+        <label for="mode">Match mode</label>
+        <select id="mode" name="mode">
+          <option value="endswith">endswith</option>
+          <option value="contains">contains</option>
+        </select>
+      </div>
+      <div>
+        <label for="ss58-format">SS58 format</label>
+        <input id="ss58-format" name="ss58Format" type="number" value="42" min="0" />
+      </div>
+    </div>
+
+    <label for="targets">Targets (comma-separated, e.g. LOL, TAO, xyz)</label>
+    <input id="targets" name="targets" placeholder="LOL, XYZ, TAO" value="LOL" />
+
+    <label class="inline-label">
+      <input type="checkbox" id="match-case" name="matchCase" />
+      <span>Match case</span>
+    </label>
+
+    <label for="max-tries">Max tries</label>
+    <input id="max-tries" name="maxTries" type="number" value="1000000" min="1" />
+
+    <button type="submit">Start search</button>
+  </form>
+
+  <div id="status" class="status" style="display:none;"></div>
+  <div id="result" class="result" style="display:none;"></div>
+  <div id="error" class="error" style="display:none;"></div>
+
+  <footer style="margin-top: 2rem; font-size: 0.85rem; color: #666; border-top: 1px solid #ddd; padding-top: 0.75rem;">
+    <strong>Author:</strong> Kostiantyn Panchenko
+  </footer>
+
+  <!-- UMD bundles: define globals polkadotUtil & polkadotUtilCrypto -->
+  <script src="https://unpkg.com/@polkadot/util@14.0.1/bundle-polkadot-util.js"></script>
+  <script src="https://unpkg.com/@polkadot/util-crypto@14.0.1/bundle-polkadot-util-crypto.js"></script>
+
+  <script>
+    function toHex(u8a) {
+      return Array.from(u8a).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function matchesTarget(addr, targets, mode, matchCase) {
+      const source = matchCase ? addr : addr.toLowerCase();
+      for (const t of targets) {
+        const target = matchCase ? t : t.toLowerCase();
+        if (mode === 'endswith') {
+          if (source.endsWith(target)) return t;
+        } else if (mode === 'contains') {
+          if (source.includes(target)) return t;
+        }
+      }
+      return null;
+    }
+
+    (async function init() {
+      const form = document.getElementById('vanity-form');
+      const statusEl = document.getElementById('status');
+      const resultEl = document.getElementById('result');
+      const errorEl = document.getElementById('error');
+
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Initializing crypto (WASM)…';
+
+      try {
+        await polkadotUtilCrypto.cryptoWaitReady();
+        statusEl.textContent = 'Crypto ready. Configure your search and click "Start search".';
+      } catch (e) {
+        statusEl.style.display = 'none';
+        errorEl.style.display = 'block';
+        errorEl.textContent = 'Failed to initialize crypto: ' + (e && e.message ? e.message : e);
+        return;
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        resultEl.style.display = 'none';
+        errorEl.style.display = 'none';
+
+        const mode = document.getElementById('mode').value || 'endswith';
+        const targetsRaw = document.getElementById('targets').value || '';
+        const ss58FormatRaw = document.getElementById('ss58-format').value || '42';
+        const maxTriesRaw = document.getElementById('max-tries').value || '50000';
+        const matchCase = document.getElementById('match-case').checked;
+
+        const targets = targetsRaw.split(',').map(t => t.trim()).filter(Boolean);
+        const ss58Format = parseInt(ss58FormatRaw, 10);
+        const maxTries = parseInt(maxTriesRaw, 10);
+
+        if (!['contains', 'endswith'].includes(mode)) {
+          errorEl.style.display = 'block';
+          errorEl.textContent = "Mode must be 'contains' or 'endswith'.";
+          return;
+        }
+        if (!targets.length) {
+          errorEl.style.display = 'block';
+          errorEl.textContent = 'Please provide at least one target substring.';
+          return;
+        }
+        if (!Number.isFinite(maxTries) || maxTries <= 0) {
+          errorEl.style.display = 'block';
+          errorEl.textContent = 'Max tries must be a positive number.';
+          return;
+        }
+
+        statusEl.style.display = 'block';
+        statusEl.textContent = 'Searching…';
+
+        let tries = 0;
+        const start = performance.now();
+        let hitInfo = null;
+
+        const chunkSize = 1000;
+
+        async function runChunk() {
+          const endFor = Math.min(tries + chunkSize, maxTries);
+          for (; tries < endFor; tries++) {
+            const seed = polkadotUtilCrypto.randomAsU8a(32);
+            const pair = polkadotUtilCrypto.sr25519PairFromSeed(seed);
+            const address = polkadotUtilCrypto.encodeAddress(pair.publicKey, ss58Format);
+            const hit = matchesTarget(address, targets, mode, matchCase);
+
+            if (hit) {
+              const elapsedMs = performance.now() - start;
+              const triesPerSec = tries / (elapsedMs / 1000 || 1);
+
+              hitInfo = {
+                mode,
+                target: hit,
+                address,
+                publicKeyHex: toHex(pair.publicKey),
+                seedHex: toHex(seed),
+                tries,
+                elapsedSec: (elapsedMs / 1000).toFixed(2),
+                rate: triesPerSec.toFixed(1)
+              };
+              return;
+            }
+          }
+
+          const elapsedMs = performance.now() - start;
+          const triesPerSec = tries / (elapsedMs / 1000 || 1);
+          statusEl.textContent = `Searching… tries: ${tries} — rate: ${triesPerSec.toFixed(1)} tries/sec`;
+
+          if (tries < maxTries && !hitInfo) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            return runChunk();
+          }
+        }
+
+        await runChunk();
+
+        if (hitInfo) {
+          statusEl.style.display = 'none';
+          resultEl.style.display = 'block';
+          resultEl.innerHTML = `
+            <h2>Match found</h2>
+            <p><strong>SS58 address:</strong> <code>${hitInfo.address}</code></p>
+            <p><strong>Public key (hex):</strong> <code>${hitInfo.publicKeyHex}</code></p>
+            <p><strong>Seed (hex, 32 bytes):</strong> <code>${hitInfo.seedHex}</code></p>
+            <p><strong>Total tries:</strong> ${hitInfo.tries}</p>
+            <p><strong>Elapsed:</strong> ${hitInfo.elapsedSec}s</p>
+            <p><strong>Rate:</strong> ${hitInfo.rate} tries/sec</p>
+          `;
+        } else {
+          statusEl.style.display = 'none';
+          errorEl.style.display = 'block';
+          errorEl.textContent = `No match found in ${maxTries} tries.`;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
+
