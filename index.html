@@ -24,6 +24,23 @@
     .error { background: #ffecec; border: 1px solid #ff3b30; }
     .status { background: #f4f4f4; border: 1px solid #ddd; font-size: 0.9rem; color: #333; }
     code { background: #f4f4f4; padding: 0.15rem 0.3rem; border-radius: 3px; word-break: break-all; }
+    code.copyable {
+      cursor: pointer;
+      position: relative;
+      padding-right: 0.8rem;
+    }
+    code.copyable::after {
+      content: '⧉';
+      position: absolute;
+      right: 0.15rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75em;
+      color: #777;
+    }
+    code.copyable:hover::after {
+      color: #111;
+    }
     .inline-label {
       display: flex;
       align-items: center;
@@ -152,6 +169,79 @@
       statusEl.style.display = 'block';
       statusEl.textContent = 'Initializing crypto (WASM)…';
 
+      function renderMatch(info, ss58Format) {
+        const shareHash = `#seed=${encodeURIComponent(info.seedHex)}&format=${encodeURIComponent(
+          String(ss58Format)
+        )}`;
+
+        statusEl.style.display = 'none';
+        errorEl.style.display = 'none';
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+          <h2>Match found</h2>
+          <p><strong>SS58 address:</strong> <code class="copyable" data-copy-label="SS58 address">${info.address}</code></p>
+          <p><strong>Public key (hex):</strong> <code class="copyable" data-copy-label="public key">${info.publicKeyHex}</code></p>
+          <p><strong>Seed (hex, 32 bytes):</strong> <code class="copyable" data-copy-label="seed">${info.seedHex}</code></p>
+          <p><strong>Total tries:</strong> ${info.tries}</p>
+          <p><strong>Elapsed:</strong> ${info.elapsedSec}s</p>
+          <p><strong>Rate:</strong> ${info.rate} tries/sec</p>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+            <strong>Share link:</strong>
+            <a href="${shareHash}">copy link to this result</a>
+          </p>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+            For Bittensor usage, see
+            <a href="https://github.com/k-panchenko/vanity-ss58-finder/blob/main/HOWTO_USE_GENERATED_SEED_BITTENSOR.md" target="_blank" rel="noopener noreferrer">
+              How to use the generated seed
+            </a>.
+          </p>
+        `;
+      }
+
+      function showSharedResultFromUrl() {
+        const hash = window.location.hash || '';
+        if (!hash.includes('seed=')) {
+          return;
+        }
+
+        const params = new URLSearchParams(hash.replace(/^#/, ''));
+        const seedHexParam = params.get('seed');
+        if (!seedHexParam) {
+          return;
+        }
+
+        const ss58FormatRaw = params.get('format') || '42';
+        const ss58Format = parseInt(ss58FormatRaw, 10);
+
+        try {
+          const normalized = seedHexParam.startsWith('0x') ? seedHexParam : `0x${seedHexParam}`;
+          const seedU8a = polkadotUtil.hexToU8a(normalized);
+          if (seedU8a.length !== 32) {
+            throw new Error('Seed must be 32 bytes');
+          }
+          const pair = polkadotUtilCrypto.sr25519PairFromSeed(seedU8a);
+          const address = polkadotUtilCrypto.encodeAddress(pair.publicKey, ss58Format);
+
+          const info = {
+            mode: 'shared',
+            target: '(from seed link)',
+            address,
+            publicKeyHex: toHex(pair.publicKey),
+            seedHex: normalized,
+            tries: '-',
+            elapsedSec: '-',
+            rate: '-'
+          };
+
+          renderMatch(info, ss58Format);
+        } catch (e) {
+          statusEl.style.display = 'none';
+          resultEl.style.display = 'none';
+          errorEl.style.display = 'block';
+          errorEl.textContent = 'Invalid seed provided in URL.';
+        }
+      }
+
       try {
         await polkadotUtilCrypto.cryptoWaitReady();
         statusEl.textContent = 'Crypto ready. Configure your search and click "Start search".';
@@ -161,6 +251,44 @@
         errorEl.textContent = 'Failed to initialize crypto: ' + (e && e.message ? e.message : e);
         return;
       }
+
+      // Click-to-copy for values in the result panel.
+      resultEl.addEventListener('click', async (event) => {
+        const target = event.target.closest('.copyable');
+        if (!target) return;
+
+        const value = (target.textContent || '').trim();
+        if (!value) return;
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(value);
+          } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+          }
+
+          const label = target.getAttribute('data-copy-label') || 'value';
+          statusEl.style.display = 'block';
+          statusEl.textContent = `Copied ${label} to clipboard.`;
+          setTimeout(() => {
+            if (statusEl.textContent.startsWith('Copied ')) {
+              statusEl.style.display = 'none';
+            }
+          }, 1500);
+        } catch (e) {
+          // Silent failure; no need to interrupt the user.
+        }
+      });
+
+      // If a seed is provided in the URL (for sharing), show its result immediately.
+      showSharedResultFromUrl();
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -241,23 +369,7 @@
         await runChunk();
 
         if (hitInfo) {
-          statusEl.style.display = 'none';
-          resultEl.style.display = 'block';
-          resultEl.innerHTML = `
-            <h2>Match found</h2>
-            <p><strong>SS58 address:</strong> <code>${hitInfo.address}</code></p>
-            <p><strong>Public key (hex):</strong> <code>${hitInfo.publicKeyHex}</code></p>
-            <p><strong>Seed (hex, 32 bytes):</strong> <code>${hitInfo.seedHex}</code></p>
-            <p><strong>Total tries:</strong> ${hitInfo.tries}</p>
-            <p><strong>Elapsed:</strong> ${hitInfo.elapsedSec}s</p>
-            <p><strong>Rate:</strong> ${hitInfo.rate} tries/sec</p>
-            <p style="margin-top: 0.75rem; font-size: 0.9rem;">
-              For Bittensor usage, see
-              <a href="https://github.com/k-panchenko/vanity-ss58-finder/blob/main/HOWTO_USE_GENERATED_SEED_BITTENSOR.md" target="_blank" rel="noopener noreferrer">
-                How to use the generated seed
-              </a>.
-            </p>
-          `;
+          renderMatch(hitInfo, ss58Format);
         } else {
           statusEl.style.display = 'none';
           errorEl.style.display = 'block';
