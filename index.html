@@ -9,22 +9,27 @@
     p.subtitle { color: #555; margin-top: 0; margin-bottom: 1.5rem; }
     label { display: block; margin-top: 0.75rem; font-weight: 600; }
     input, select { width: 100%; padding: 0.4rem; margin-top: 0.25rem; box-sizing: border-box; }
+    input[type="checkbox"] { width: auto; padding: 0; margin: 0; }
     button { margin-top: 1rem; padding: 0.5rem 1.25rem; font-weight: 600; cursor: pointer; }
-    .row { display: flex; gap: 1rem; }
-    .row > div { flex: 1; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row > div { flex: 1 1 200px; }
     .result, .error, .status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; }
     .result { background: #e6ffed; border: 1px solid #34c759; }
     .error { background: #ffecec; border: 1px solid #ff3b30; }
     .status { background: #f4f4f4; border: 1px solid #ddd; font-size: 0.9rem; color: #333; }
     code { background: #f4f4f4; padding: 0.15rem 0.3rem; border-radius: 3px; word-break: break-all; }
     .inline-label {
-      display: inline-flex;
-      flex-direction: row-reverse; /* text then checkbox */
+      display: flex;
       align-items: center;
       gap: 0.35rem;
       margin-top: 0.75rem;
-      white-space: nowrap;
-      font-weight: 500;
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
