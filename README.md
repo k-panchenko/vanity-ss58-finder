@@ -1,6 +1,6 @@
 ## Vanity SS58 Finder (browser-only)
 
-This repo contains a browser-based SS58 vanity address generator implemented in pure HTML + JavaScript: `ss58-generator.html`.
+This repo contains a browser-based SS58 vanity address generator implemented in pure HTML + JavaScript.
 
 The page uses the Polkadot JS crypto stack (`@polkadot/util` and `@polkadot/util-crypto`) loaded from public CDNs and runs **entirely client-side** – no backend or Node.js build step is required.
 
@@ -25,15 +25,15 @@ No keys or seeds are ever sent to a server: everything happens inside your brows
 
 1. Make sure you have a **modern browser** (Chrome, Firefox, Edge, or Safari).
 2. Open the file directly:
-   - From Finder / Explorer: double-click `ss58-generator.html`, or
+   - From Finder / Explorer: double-click `index.html`, or
    - From the command line:
 
 ```bash
-open ss58-generator.html        # macOS
-xdg-open ss58-generator.html    # many Linux distros
+open index.html        # macOS
+xdg-open index.html    # many Linux distros
 ```
 
-If your browser blocks local module scripts, you can instead serve the folder with a small HTTP server (for example `python -m http.server`) and open `http://localhost:8000/ss58-generator.html`.
+If your browser blocks local module scripts, you can instead serve the folder with a small HTTP server (for example `python -m http.server`) and open `http://localhost:8000/index.html`.
 
 ---
 
