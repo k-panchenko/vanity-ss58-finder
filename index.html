@@ -170,7 +170,7 @@
       statusEl.textContent = 'Initializing crypto (WASM)…';
 
       function renderMatch(info, ss58Format) {
-        const shareHash = `#seed=${encodeURIComponent(info.seedHex)}&format=${encodeURIComponent(
+        const shareQuery = `?seed=${encodeURIComponent(info.seedHex)}&format=${encodeURIComponent(
           String(ss58Format)
         )}`;
 
@@ -187,7 +187,7 @@
           <p><strong>Rate:</strong> ${info.rate} tries/sec</p>
           <p style="margin-top: 0.5rem; font-size: 0.9rem;">
             <strong>Share link:</strong>
-            <a href="${shareHash}">copy link to this result</a>
+            <a href="${shareQuery}">open sharable link</a>
           </p>
           <p style="margin-top: 0.5rem; font-size: 0.9rem;">
             For Bittensor usage, see
@@ -199,12 +199,19 @@
       }
 
       function showSharedResultFromUrl() {
+        let params = null;
+
+        const search = window.location.search || '';
         const hash = window.location.hash || '';
-        if (!hash.includes('seed=')) {
+
+        if (search.includes('seed=')) {
+          params = new URLSearchParams(search.replace(/^\?/, ''));
+        } else if (hash.includes('seed=')) {
+          params = new URLSearchParams(hash.replace(/^#/, ''));
+        } else {
           return;
         }
 
-        const params = new URLSearchParams(hash.replace(/^#/, ''));
         const seedHexParam = params.get('seed');
         if (!seedHexParam) {
           return;
